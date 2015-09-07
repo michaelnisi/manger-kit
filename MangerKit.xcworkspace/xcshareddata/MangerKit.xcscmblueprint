@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "1AB616ED216BA4C284B3067FF9B9B7FA377E2566",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "9CC3E51552DEEC12F7A729297DEFDDAAF329874F" : 0,
+    "1AB616ED216BA4C284B3067FF9B9B7FA377E2566" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "EBA19A6A-9639-489E-8A3E-04919A21D083",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "9CC3E51552DEEC12F7A729297DEFDDAAF329874F" : "ola\/",
+    "1AB616ED216BA4C284B3067FF9B9B7FA377E2566" : "manger-kit\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "MangerKit",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "MangerKit.xcworkspace",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "github.com:michaelnisi\/manger-kit.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "1AB616ED216BA4C284B3067FF9B9B7FA377E2566"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "github.com:michaelnisi\/ola.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "9CC3E51552DEEC12F7A729297DEFDDAAF329874F"
+    }
+  ]
+}
