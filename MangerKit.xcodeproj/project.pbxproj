@@ -7,11 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4E0B19571B9306EB00F12A4C /* MangerOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E0B19561B9306EB00F12A4C /* MangerOperation.swift */; settings = {ASSET_TAGS = (); }; };
-		4E0B19621B9307F400F12A4C /* Ola.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E0B19611B9307F400F12A4C /* Ola.framework */; };
-		4E3CFAC71B8EEDFA00BD62AC /* index.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E3CFAC61B8EEDFA00BD62AC /* index.swift */; settings = {ASSET_TAGS = (); }; };
+		4CCC8CC41C0773C100120D07 /* Patron.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4CCC8CC31C0773C100120D07 /* Patron.framework */; };
+		4E3CFAC71B8EEDFA00BD62AC /* index.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E3CFAC61B8EEDFA00BD62AC /* index.swift */; };
 		4EFC37951B8EED4D00066026 /* MangerKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 4EFC37941B8EED4D00066026 /* MangerKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		4EFC379C1B8EED4D00066026 /* MangerKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EFC37911B8EED4D00066026 /* MangerKit.framework */; settings = {ASSET_TAGS = (); }; };
+		4EFC379C1B8EED4D00066026 /* MangerKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EFC37911B8EED4D00066026 /* MangerKit.framework */; };
 		4EFC37A11B8EED4D00066026 /* MangerKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EFC37A01B8EED4D00066026 /* MangerKitTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -26,8 +25,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		4E0B19561B9306EB00F12A4C /* MangerOperation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MangerOperation.swift; sourceTree = "<group>"; };
-		4E0B19611B9307F400F12A4C /* Ola.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Ola.framework; path = "../../ola/build/Debug-iphoneos/Ola.framework"; sourceTree = "<group>"; };
+		4CCC8CC31C0773C100120D07 /* Patron.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Patron.framework; path = "../../patron/build/Debug-iphoneos/Patron.framework"; sourceTree = "<group>"; };
 		4E3CFAC61B8EEDFA00BD62AC /* index.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = index.swift; sourceTree = "<group>"; };
 		4EFC37911B8EED4D00066026 /* MangerKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MangerKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4EFC37941B8EED4D00066026 /* MangerKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MangerKit.h; sourceTree = "<group>"; };
@@ -42,7 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4E0B19621B9307F400F12A4C /* Ola.framework in Frameworks */,
+				4CCC8CC41C0773C100120D07 /* Patron.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -60,7 +58,7 @@
 		4EFC37871B8EED4D00066026 = {
 			isa = PBXGroup;
 			children = (
-				4E0B19611B9307F400F12A4C /* Ola.framework */,
+				4CCC8CC31C0773C100120D07 /* Patron.framework */,
 				4EFC37931B8EED4D00066026 /* MangerKit */,
 				4EFC379F1B8EED4D00066026 /* MangerKitTests */,
 				4EFC37921B8EED4D00066026 /* Products */,
@@ -82,7 +80,6 @@
 				4EFC37941B8EED4D00066026 /* MangerKit.h */,
 				4EFC37961B8EED4D00066026 /* Info.plist */,
 				4E3CFAC61B8EEDFA00BD62AC /* index.swift */,
-				4E0B19561B9306EB00F12A4C /* MangerOperation.swift */,
 			);
 			path = MangerKit;
 			sourceTree = "<group>";
@@ -158,7 +155,6 @@
 				TargetAttributes = {
 					4EFC37901B8EED4D00066026 = {
 						CreatedOnToolsVersion = 7.0;
-						DevelopmentTeam = X23V32HT8X;
 					};
 					4EFC379A1B8EED4D00066026 = {
 						CreatedOnToolsVersion = 7.0;
@@ -206,7 +202,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				4E3CFAC71B8EEDFA00BD62AC /* index.swift in Sources */,
-				4E0B19571B9306EB00F12A4C /* MangerOperation.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -248,7 +243,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -296,7 +291,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -325,7 +320,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
-				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 2;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = MangerKit/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -344,7 +339,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
-				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 2;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = MangerKit/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
