@@ -9,7 +9,7 @@
 import XCTest
 @testable import MangerKit
 
-func delay(ms: Int64 = Int64(arc4random_uniform(10)), cb: () -> Void) {
+func delay (ms: Int64 = Int64(arc4random_uniform(10)), cb: () -> Void) {
   let delta = ms * Int64(NSEC_PER_MSEC)
   let when = dispatch_time(DISPATCH_TIME_NOW, delta)
   dispatch_after(when, dispatch_get_main_queue(), cb)
@@ -45,20 +45,19 @@ let invalidQueries: [MangerQuery] = [
 
 class MangerFailures: XCTestCase {
   var session: NSURLSession!
-  var queue: NSOperationQueue!
+  var queue: dispatch_queue_t!
   var svc: MangerService!
   
-  override func setUp() {
+  override func setUp () {
     super.setUp()
-    let baseURL: NSURL = NSURL(string: "http://localhost:8385")!
-    queue = NSOperationQueue()
+    queue = dispatch_queue_create("com.michaelnisi.patron.json", DISPATCH_QUEUE_CONCURRENT)
     session = freshSession()
-    svc = Manger(baseURL: baseURL, queue: queue, session: session)
+    let url = NSURL(string: "http://localhost:8385")!
+    svc = Manger(URL: url, queue: queue, session: session)
   }
   
   override func tearDown() {
     session.invalidateAndCancel()
-    queue.cancelAllOperations()
     svc = nil
     super.tearDown()
   }
@@ -94,7 +93,7 @@ class MangerFailures: XCTestCase {
   func testVersion () {
     let exp = self.expectationWithDescription("version")
     let cb = callbackWithExpression(exp)
-    svc.version(cb)
+    try! svc.version(cb)
     self.waitForExpectationsWithTimeout(10) { er in
       XCTAssertNil(er)
     }
@@ -103,21 +102,18 @@ class MangerFailures: XCTestCase {
 
 class MangerKitTests: XCTestCase {
   var session: NSURLSession!
-  var queue: NSOperationQueue!
+  var queue: dispatch_queue_t!
   var svc: MangerService!
   
   override func setUp () {
     super.setUp()
-    let baseURL: NSURL = NSURL(string: "http://localhost:8384")!
-    queue = NSOperationQueue()
+    queue = dispatch_queue_create("com.michaelnisi.patron.json", DISPATCH_QUEUE_CONCURRENT)
     session = freshSession()
-    svc = Manger(baseURL: baseURL, queue: queue, session: session)
+    let url = NSURL(string: "http://localhost:8384")!
+    svc = Manger(URL: url, queue: queue, session: session)
   }
   
   override func tearDown () {
-    session.invalidateAndCancel()
-    queue.cancelAllOperations()
-    svc = nil
     super.tearDown()
   }
   
@@ -253,7 +249,7 @@ class MangerKitTests: XCTestCase {
   
   func testVersion () {
     let exp = self.expectationWithDescription("version")
-    svc.version() { error, version in
+    try! svc.version() { error, version in
       XCTAssertNil(error)
       XCTAssertEqual(version, "1.0.3")
       exp.fulfill()
@@ -266,7 +262,7 @@ class MangerKitTests: XCTestCase {
   func testVersionCancel () {
     let svc = self.svc!
     let exp = self.expectationWithDescription("version")
-    let op = svc.version { error, version in
+    let task = try! svc.version { error, version in
       do {
         throw error!
       } catch MangerError.CancelledByUser {
@@ -276,7 +272,7 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(version)
       exp.fulfill()
     }
-    op.cancel()
+    task.cancel()
     self.waitForExpectationsWithTimeout(10) { er in
       XCTAssertNil(er)
     }

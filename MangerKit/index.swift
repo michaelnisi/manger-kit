@@ -6,17 +6,17 @@
 //  Copyright © 2015 Michael Nisi. All rights reserved.
 //
 
+// TODO: Document MangerKit 
+
 import Foundation
 import Patron
 
 public enum MangerError: ErrorType {
   case UnexpectedResult(result: AnyObject?)
   case CancelledByUser
-  case NoData
-  case OlaInitializationFailed
-  case NoSession
   case NoQueries
   case InvalidQuery
+  case NIY
 }
 
 func retypeError(error: ErrorType?) -> ErrorType? {
@@ -25,12 +25,11 @@ func retypeError(error: ErrorType?) -> ErrorType? {
   }
   do {
     throw error!
-  } catch PatronError.CancelledByUser {
-    return MangerError.CancelledByUser
-  } catch PatronError.NoData {
-    return MangerError.NoData
-  } catch PatronError.OlaInitializationFailed {
-    return MangerError.OlaInitializationFailed
+  } catch let error as NSError {
+    switch error.code {
+    case -999: return MangerError.CancelledByUser
+    default: return error
+    }
   } catch {
     return error
   }
@@ -45,7 +44,9 @@ public protocol MangerQuery {
   var since: NSDate { get }
 }
 
-func payloadWithQueries(queries: [MangerQuery]) -> [[String:AnyObject]] {
+typealias Payload = [[String:AnyObject]]
+
+func payloadWithQueries(queries: [MangerQuery]) -> Payload {
   return queries.map { query in
     let since = JSTimeFromDate(query.since)
     guard since != 0 else {
@@ -56,10 +57,21 @@ func payloadWithQueries(queries: [MangerQuery]) -> [[String:AnyObject]] {
 }
 
 public protocol MangerService {
-  func feeds (queries: [MangerQuery], cb: (ErrorType?, [[String: AnyObject]]?) -> Void) throws -> NSOperation
-  func entries (queries: [MangerQuery], cb: (ErrorType?, [[String: AnyObject]]?) -> Void) throws -> NSOperation
-  func version (cb: (ErrorType?, String?) -> Void) -> NSOperation
+  
+  func feeds(
+    queries: [MangerQuery],
+    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
+  ) throws -> NSURLSessionTask
+  
+  func entries(
+    queries: [MangerQuery],
+    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
+  ) throws -> NSURLSessionTask
+  
+  func version(cb: (ErrorType?, String?) -> Void) throws -> NSURLSessionTask
 }
+
+// TODO: Deprecate useage of self-signed certificates.
 
 class Certify: NSObject {
   let certs: [SecCertificate]
@@ -87,7 +99,7 @@ extension Certify: NSURLSessionDelegate {
   }
 }
 
-func loadCertWithName (name: String, fromBundle bundle: NSBundle) -> SecCertificate? {
+func loadCertWithName(name: String, fromBundle bundle: NSBundle) -> SecCertificate? {
   if let path = bundle.pathForResource(name, ofType: "der") {
     if let data = NSData(contentsOfFile: path) {
       return SecCertificateCreateWithData(nil, data)
@@ -96,18 +108,20 @@ func loadCertWithName (name: String, fromBundle bundle: NSBundle) -> SecCertific
   return nil
 }
 
-func headers () -> [NSObject: AnyObject] {
+// --
+
+func headers() -> [NSObject: AnyObject] {
   return [
     "Authorization": "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
     "Accept-Encoding": "compress, gzip"
   ]
 }
 
-func HTTPBodyFromPayload (payload: [[String: AnyObject]]) -> NSData {
+func HTTPBodyFromPayload(payload: [[String: AnyObject]]) -> NSData {
   return try! NSJSONSerialization.dataWithJSONObject(payload, options: .PrettyPrinted)
 }
 
-func checkQueries (queries: [MangerQuery]) throws {
+func checkQueries(queries: [MangerQuery]) throws {
   guard queries.count > 0 else { throw MangerError.NoQueries }
   let invalids = queries.filter { q in
     q.url == ""
@@ -117,108 +131,66 @@ func checkQueries (queries: [MangerQuery]) throws {
   }
 }
 
-public class Manger: MangerService {
+/// This adoption invalidates its session. Do not share sessions!
+
+public final class Manger: MangerService {
   
-  class func defaultSession (scheme: String) throws -> NSURLSession {
-    let conf = NSURLSessionConfiguration.defaultSessionConfiguration()
-    func delegate () throws -> NSURLSessionDelegate? {
-      if scheme == "https" {
-        let bundle = NSBundle.mainBundle()
-        guard let cert = loadCertWithName("cert", fromBundle: bundle) else {
-          throw MangerError.NoSession
-        }
-        return Certify(cert: cert)
-      }
-      return nil
-    }
-    // Remember that these are mostly POST requests, and--as such--are not cached,
-    // unless we would use:
-    // conf.requestCachePolicy = .ReturnCacheDataElseLoad
-    // ... and than also would have to remove cached responses manually.
-    conf.HTTPAdditionalHeaders = headers()
-    conf.HTTPShouldUsePipelining = true
-    let del = try! delegate()
-    let queue = NSOperationQueue()
-    return NSURLSession(configuration: conf, delegate: del, delegateQueue: queue)
-  }
-  
-  let baseURL: NSURL
-  let queue: NSOperationQueue
+  let client: Patron
   let session: NSURLSession
 
-  public init (baseURL: NSURL, queue: NSOperationQueue, session: NSURLSession) {
-    self.baseURL = baseURL
-    self.queue = queue
+  public init (URL: NSURL, queue: dispatch_queue_t, session: NSURLSession) {
     self.session = session
+    self.client = PatronClient(URL: URL, queue: queue, session: session)
   }
   
-  func addOperation (
-    op: PatronOperation,
-    withCallback cb: (ErrorType?, [[String : AnyObject]]?) -> Void) {
-      
-    op.completionBlock = { [unowned op] in
-      if let er = retypeError(op.error) {
+  deinit {
+    session.invalidateAndCancel()
+  }
+
+  func queryTaskWithPayload (
+    payload: Payload,
+    forPath path: String,
+    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
+  ) throws -> NSURLSessionTask {
+    return try client.post(path, json: payload) { json, response, error in
+      if let er = retypeError(error) {
         cb(er, nil)
-      } else if let result = op.result as? [[String : AnyObject]] {
+      } else if let result = json as? [[String:AnyObject]] {
         cb(nil, result)
       } else {
-        cb(MangerError.UnexpectedResult(result: op.result), nil)
+        cb(MangerError.UnexpectedResult(result: json), nil)
       }
     }
-    queue.addOperation(op)
-  }
-
-  func operationWithRequest (req: NSURLRequest) -> PatronOperation {
-    let q = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0)
-    return PatronOperation(session: session, request: req, queue: q)
   }
   
-  func urlWithPath (path: String) -> NSURL {
-    return NSURL(string: path, relativeToURL: baseURL)!
-  }
-  
-  func query (
-    url: NSURL,
-    payload: [[String: AnyObject]],
-    cb: (ErrorType?, [[String: AnyObject]]?) -> Void) -> NSOperation {
-      
-    let req = NSMutableURLRequest(URL: url)
-    req.HTTPMethod = "POST"
-    req.HTTPBody = HTTPBodyFromPayload(payload)
-    let op = operationWithRequest(req)
-    addOperation(op, withCallback: cb)
-    return op
-  }
-  
-  public func feeds (queries: [MangerQuery], cb: (ErrorType?, [[String: AnyObject]]?) -> Void) throws ->  NSOperation {
+  public func feeds(
+    queries: [MangerQuery],
+    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
+  ) throws ->  NSURLSessionTask {
     try checkQueries(queries)
     let payload = payloadWithQueries(queries)
-    let url = urlWithPath("feeds")
-    return query(url, payload: payload, cb: cb)
+    return try queryTaskWithPayload(payload, forPath: "/feeds", cb: cb)
   }
 
-  public func entries (queries: [MangerQuery], cb: (ErrorType?, [[String: AnyObject]]?) -> Void) throws -> NSOperation {
+  public func entries(
+    queries: [MangerQuery],
+    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
+  ) throws -> NSURLSessionTask {
     try checkQueries(queries)
     let payload = payloadWithQueries(queries)
-    let url = urlWithPath("entries")
-    return query(url, payload: payload, cb: cb)
+    return try queryTaskWithPayload(payload, forPath: "/entries", cb: cb)
   }
 
-  public func version(cb: (ErrorType?, String?) -> Void) -> NSOperation {
-    let url = urlWithPath("/")
-    let req = NSURLRequest(URL: url)
-    let op = operationWithRequest(req)
-    op.completionBlock = { [unowned op] in
-      if let er = retypeError(op.error) {
+  public func version(cb: (ErrorType?, String?) -> Void) throws -> NSURLSessionTask {
+    return try client.get("/") { json, response, error in
+      if let er = retypeError(error) {
         cb(er, nil)
-      } else if let version = op.result?["version"] as? String {
+      } else if let version = json?["version"] as? String {
         cb(nil, version)
       } else {
-        cb(MangerError.UnexpectedResult(result: op.result), nil)
+        cb(MangerError.UnexpectedResult(result: json), nil)
       }
     }
-    queue.addOperation(op)
-    return op
   }
 }
 
