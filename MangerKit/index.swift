@@ -35,8 +35,9 @@ func retypeError(error: ErrorType?) -> ErrorType? {
   }
 }
 
-func JSTimeFromDate(date: NSDate) -> Int {
-  return Int(date.timeIntervalSince1970 * 1000)
+func JSTimeFromDate(date: NSDate) -> Double {
+  let ms = date.timeIntervalSince1970 * 1000
+  return round(ms)
 }
 
 public protocol MangerQuery {
