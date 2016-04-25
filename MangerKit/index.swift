@@ -6,8 +6,6 @@
 //  Copyright © 2015 Michael Nisi. All rights reserved.
 //
 
-// TODO: Document MangerKit 
-
 import Foundation
 import Patron
 
@@ -57,6 +55,8 @@ func payloadWithQueries(queries: [MangerQuery]) -> Payload {
   }
 }
 
+/// Define **manger** service, a client for **manger-http**, an HTTP JSON API
+/// for requesting feeds and entries within time intervals.
 public protocol MangerService {
   
   func feeds(
@@ -72,7 +72,7 @@ public protocol MangerService {
   func version(cb: (ErrorType?, String?) -> Void) throws -> NSURLSessionTask
 }
 
-// TODO: Deprecate useage of self-signed certificates.
+// MARK: - TODO: Deprecate self-signed certificate support
 
 class Certify: NSObject {
   let certs: [SecCertificate]
@@ -85,18 +85,19 @@ extension Certify: NSURLSessionDelegate {
   func URLSession(
     session: NSURLSession,
     didReceiveChallenge challenge: NSURLAuthenticationChallenge,
-    completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Void) {
-      let space = challenge.protectionSpace
-      guard let trust = space.serverTrust else {
-        completionHandler(.CancelAuthenticationChallenge, nil)
-        return
-      }
-      let status = SecTrustSetAnchorCertificates(trust, certs)
-      if status == 0 {
-        completionHandler(.PerformDefaultHandling, nil)
-      } else {
-        completionHandler(.CancelAuthenticationChallenge, nil)
-      }
+    completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?
+  ) -> Void) {
+    let space = challenge.protectionSpace
+    guard let trust = space.serverTrust else {
+      completionHandler(.CancelAuthenticationChallenge, nil)
+      return
+    }
+    let status = SecTrustSetAnchorCertificates(trust, certs)
+    if status == 0 {
+      completionHandler(.PerformDefaultHandling, nil)
+    } else {
+      completionHandler(.CancelAuthenticationChallenge, nil)
+    }
   }
 }
 
@@ -109,8 +110,9 @@ func loadCertWithName(name: String, fromBundle bundle: NSBundle) -> SecCertifica
   return nil
 }
 
-// --
+// MARK: -
 
+// You should totally don't read this! 😎
 func headers() -> [NSObject: AnyObject] {
   return [
     "Authorization": "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
@@ -132,23 +134,28 @@ func checkQueries(queries: [MangerQuery]) throws {
   }
 }
 
-/// This adoption invalidates its session. Do not share sessions!
-
+/// The production implementation of `MangerService`. Note that this object 
+/// invalidates its session, hence: Do not share sessions!
 public final class Manger: MangerService {
   
   let client: Patron
   let session: NSURLSession
 
+  /// Initializes a newly created service with a specified URL, queue, and session.
+  /// - Parameter URL: The base URL of the remote API.
+  /// - Parameter queue: The dispatch queue to use to parse responses.
+  /// - Parameter sesssion: The URL session to use for requests.
   public init (URL: NSURL, queue: dispatch_queue_t, session: NSURLSession) {
     self.session = session
     self.client = PatronClient(URL: URL, queue: queue, session: session)
   }
   
+  /// Invalidate and cancel the URL session.
   deinit {
     session.invalidateAndCancel()
   }
 
-  func queryTaskWithPayload (
+  private func queryTaskWithPayload (
     payload: Payload,
     forPath path: String,
     cb: (ErrorType?, [[String: AnyObject]]?) -> Void
@@ -164,6 +171,10 @@ public final class Manger: MangerService {
     }
   }
   
+  /// Request feeds for specified queries.
+  /// - Returns: The URL session task.
+  /// - Throws: Invalid URLs or failed payload serialization can obstruct 
+  /// successful task creation.
   public func feeds(
     queries: [MangerQuery],
     cb: (ErrorType?, [[String: AnyObject]]?) -> Void
@@ -173,6 +184,10 @@ public final class Manger: MangerService {
     return try queryTaskWithPayload(payload, forPath: "/feeds", cb: cb)
   }
 
+  /// Request entries for specified queries.
+  /// - Returns: The URL session task.
+  /// - Throws: Invalid URLs or failed payload serialization can obstruct
+  /// successful task creation.
   public func entries(
     queries: [MangerQuery],
     cb: (ErrorType?, [[String: AnyObject]]?) -> Void
@@ -182,6 +197,10 @@ public final class Manger: MangerService {
     return try queryTaskWithPayload(payload, forPath: "/entries", cb: cb)
   }
 
+  /// Request the version of the remote API.
+  /// - Returns: The URL session task.
+  /// - Throws: Invalid URLs or failed payload serialization can obstruct
+  /// successful task creation.
   public func version(cb: (ErrorType?, String?) -> Void) throws -> NSURLSessionTask {
     return try client.get("/") { json, response, error in
       if let er = retypeError(error) {
