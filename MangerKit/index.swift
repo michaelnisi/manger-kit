@@ -6,131 +6,82 @@
 //  Copyright © 2015 Michael Nisi. All rights reserved.
 //
 
+// TODO: Hit URL query path for single feeds without dates to improve caching
+
 import Foundation
 import Patron
 
-public enum MangerError: ErrorType {
-  case UnexpectedResult(result: AnyObject?)
-  case CancelledByUser
-  case NoQueries
-  case InvalidQuery
-  case NIY
+public enum MangerError: Error {
+  case unexpectedResult(result: Any?)
+  case cancelledByUser
+  case noQueries
+  case invalidQuery
+  case niy
 }
 
-func retypeError(error: ErrorType?) -> ErrorType? {
-  guard error != nil else {
-    return nil
-  }
-  do {
-    throw error!
-  } catch let error as NSError {
-    switch error.code {
-    case -999: return MangerError.CancelledByUser
-    default: return error
-    }
-  } catch {
+private func retypeError(_ error: Error?) -> Error? {
+  guard let er = error as? NSError else {
     return error
   }
+  switch er.code {
+  case -999: return MangerError.cancelledByUser
+  default: return er
+  }
 }
 
-func JSTimeFromDate(date: NSDate) -> Double {
+func JSTimeFromDate(_ date: Date) -> Double {
   let ms = date.timeIntervalSince1970 * 1000
   return round(ms)
 }
 
 public protocol MangerQuery {
   var url: String { get }
-  var since: NSDate { get }
+  var since: Date { get }
 }
 
-typealias Payload = [[String:AnyObject]]
+typealias Payload = [[String : Any]]
 
-func payloadWithQueries(queries: [MangerQuery]) -> Payload {
+private func payloadWithQueries(_ queries: [MangerQuery]) -> Payload {
   return queries.map { query in
     let since = JSTimeFromDate(query.since)
     guard since != 0 else {
-      return ["url": query.url]
+      return ["url": query.url as AnyObject]
     }
-    return ["url": query.url, "since": since]
+    return ["url": query.url as AnyObject, "since": since as AnyObject]
   }
 }
 
 /// Define **manger** service, a client for **manger-http**, an HTTP JSON API
 /// for requesting feeds and entries within time intervals.
 public protocol MangerService {
+  var client: JSONService { get }
   
-  func feeds(
-    queries: [MangerQuery],
-    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
-  ) throws -> NSURLSessionTask
+  @discardableResult func feeds(
+    _ queries: [MangerQuery],
+    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+  ) throws -> URLSessionTask
   
-  func entries(
-    queries: [MangerQuery],
-    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
-  ) throws -> NSURLSessionTask
+  @discardableResult func entries(
+    _ queries: [MangerQuery],
+    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+  ) throws -> URLSessionTask
   
-  func version(cb: (ErrorType?, String?) -> Void) throws -> NSURLSessionTask
+  @discardableResult func version(
+    _ cb: @escaping (Error?, String?) -> Void
+  ) throws -> URLSessionTask
 }
 
-// MARK: - TODO: Deprecate self-signed certificate support
-
-class Certify: NSObject {
-  let certs: [SecCertificate]
-  init (cert: SecCertificate) {
-    self.certs = [cert]
-  }
+func HTTPBodyFromPayload(_ payload: [[String : Any]]) -> Data {
+  return try! JSONSerialization.data(withJSONObject: payload, options: .prettyPrinted)
 }
 
-extension Certify: NSURLSessionDelegate {
-  func URLSession(
-    session: NSURLSession,
-    didReceiveChallenge challenge: NSURLAuthenticationChallenge,
-    completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?
-  ) -> Void) {
-    let space = challenge.protectionSpace
-    guard let trust = space.serverTrust else {
-      completionHandler(.CancelAuthenticationChallenge, nil)
-      return
-    }
-    let status = SecTrustSetAnchorCertificates(trust, certs)
-    if status == 0 {
-      completionHandler(.PerformDefaultHandling, nil)
-    } else {
-      completionHandler(.CancelAuthenticationChallenge, nil)
-    }
-  }
-}
-
-func loadCertWithName(name: String, fromBundle bundle: NSBundle) -> SecCertificate? {
-  if let path = bundle.pathForResource(name, ofType: "der") {
-    if let data = NSData(contentsOfFile: path) {
-      return SecCertificateCreateWithData(nil, data)
-    }
-  }
-  return nil
-}
-
-// MARK: -
-
-// You should totally don't read this! 😎
-func headers() -> [NSObject: AnyObject] {
-  return [
-    "Authorization": "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
-    "Accept-Encoding": "compress, gzip"
-  ]
-}
-
-func HTTPBodyFromPayload(payload: [[String: AnyObject]]) -> NSData {
-  return try! NSJSONSerialization.dataWithJSONObject(payload, options: .PrettyPrinted)
-}
-
-func checkQueries(queries: [MangerQuery]) throws {
-  guard queries.count > 0 else { throw MangerError.NoQueries }
+private func checkQueries(_ queries: [MangerQuery]) throws {
+  guard queries.count > 0 else { throw MangerError.noQueries }
   let invalids = queries.filter { q in
     q.url == ""
   }
   if invalids.count != 0 {
-    throw MangerError.InvalidQuery
+    throw MangerError.invalidQuery
   }
 }
 
@@ -138,77 +89,74 @@ func checkQueries(queries: [MangerQuery]) throws {
 /// invalidates its session, hence: Do not share sessions!
 public final class Manger: MangerService {
   
-  let client: Patron
-  let session: NSURLSession
+  /// The underlying JSON service client.
+  public let client: JSONService
 
-  /// Initializes a newly created service with a specified URL, queue, and session.
-  /// - Parameter URL: The base URL of the remote API.
-  /// - Parameter queue: The dispatch queue to use to parse responses.
-  /// - Parameter sesssion: The URL session to use for requests.
-  public init (URL: NSURL, queue: dispatch_queue_t, session: NSURLSession) {
-    self.session = session
-    self.client = PatronClient(URL: URL, queue: queue, session: session)
-  }
-  
-  /// Invalidate and cancel the URL session.
-  deinit {
-    session.invalidateAndCancel()
+  /// Create and return a new `Manger` object.
+  ///
+  /// - parameter client: The JSON service to use.
+  public init(client: JSONService) {
+    self.client = client
   }
 
-  private func queryTaskWithPayload (
-    payload: Payload,
+  private func queryTaskWithPayload(
+    _ payload: Payload,
     forPath path: String,
-    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
-  ) throws -> NSURLSessionTask {
-    return try client.post(path, json: payload) { json, response, error in
+    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+  ) throws -> URLSessionTask {
+    let json = payload as AnyObject
+    return try client.post(path: path, json: json) { json, response, error in
       if let er = retypeError(error) {
         cb(er, nil)
-      } else if let result = json as? [[String:AnyObject]] {
+      } else if let result = json as? [[String : AnyObject]] {
         cb(nil, result)
       } else {
-        cb(MangerError.UnexpectedResult(result: json), nil)
+        cb(MangerError.unexpectedResult(result: json), nil)
       }
     }
   }
-  
-  /// Request feeds for specified queries.
-  /// - Returns: The URL session task.
-  /// - Throws: Invalid URLs or failed payload serialization can obstruct 
+
+  /// Requests feeds for specified queries.
+  ///
+  /// - returns: The URL session task.
+  /// - throws: Invalid URLs or failed payload serialization can obstruct
   /// successful task creation.
   public func feeds(
-    queries: [MangerQuery],
-    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
-  ) throws ->  NSURLSessionTask {
+    _ queries: [MangerQuery],
+    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+  ) throws ->  URLSessionTask {
     try checkQueries(queries)
     let payload = payloadWithQueries(queries)
     return try queryTaskWithPayload(payload, forPath: "/feeds", cb: cb)
   }
-
-  /// Request entries for specified queries.
-  /// - Returns: The URL session task.
-  /// - Throws: Invalid URLs or failed payload serialization can obstruct
+  
+  /// Requests entries for specified queries.
+  ///
+  /// - returns: The URL session task.
+  /// - throws: Invalid URLs or failed payload serialization can obstruct
   /// successful task creation.
   public func entries(
-    queries: [MangerQuery],
-    cb: (ErrorType?, [[String: AnyObject]]?) -> Void
-  ) throws -> NSURLSessionTask {
+    _ queries: [MangerQuery],
+    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+  ) throws -> URLSessionTask {
     try checkQueries(queries)
     let payload = payloadWithQueries(queries)
     return try queryTaskWithPayload(payload, forPath: "/entries", cb: cb)
   }
 
-  /// Request the version of the remote API.
-  /// - Returns: The URL session task.
-  /// - Throws: Invalid URLs or failed payload serialization can obstruct
+  /// Requests the version of the remote API.
+  ///
+  /// - returns: The URL session task.
+  /// - throws: Invalid URLs or failed payload serialization can obstruct
   /// successful task creation.
-  public func version(cb: (ErrorType?, String?) -> Void) throws -> NSURLSessionTask {
-    return try client.get("/") { json, response, error in
+  public func version(_ cb: @escaping (Error?, String?) -> Void) throws -> URLSessionTask {
+    return client.get(path: "/") { json, response, error in
       if let er = retypeError(error) {
         cb(er, nil)
       } else if let version = json?["version"] as? String {
         cb(nil, version)
       } else {
-        cb(MangerError.UnexpectedResult(result: json), nil)
+        cb(MangerError.unexpectedResult(result: json), nil)
       }
     }
   }

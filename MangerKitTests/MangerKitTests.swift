@@ -7,26 +7,36 @@
 //
 
 import XCTest
+import Patron
 @testable import MangerKit
 
-func delay(ms: Int64 = Int64(arc4random_uniform(10)), cb: () -> Void) {
+/// Enqueue a block for execution after a specified delay in milliseconds or, 
+/// if `ms` isnt’t supplied, after a random delay between 0 and 10 milliseconds.
+///
+/// - parameter queue: The queue on which to submit the block..
+/// - parameter ms: Delay in milliseconds before the callback is dispatched.
+/// - parameter cb: The block to submit after the delay `ms`.
+func delay(
+  _ ms: Int64 = Int64(arc4random_uniform(10)),
+  queue: DispatchQueue = DispatchQueue.main,
+  cb: @escaping () -> Void) {
   let delta = ms * Int64(NSEC_PER_MSEC)
-  let when = dispatch_time(DISPATCH_TIME_NOW, delta)
-  dispatch_after(when, dispatch_get_main_queue(), cb)
+  let when = DispatchTime.now() + Double(delta) / Double(NSEC_PER_SEC)
+  queue.asyncAfter(deadline: when, execute: cb)
 }
 
-func freshSession() -> NSURLSession {
-  let conf = NSURLSessionConfiguration.defaultSessionConfiguration()
-  conf.HTTPShouldUsePipelining = true
-  conf.requestCachePolicy = .ReloadIgnoringLocalCacheData
-  return NSURLSession(configuration: conf)
+private func freshSession() -> URLSession {
+  let conf = URLSessionConfiguration.default
+  conf.httpShouldUsePipelining = true
+  conf.requestCachePolicy = .reloadIgnoringLocalCacheData
+  return URLSession(configuration: conf)
 }
 
 struct Query: MangerQuery {
   let url: String
-  let since: NSDate
+  let since: Date
   
-  init (url: String, since: NSDate = NSDate(timeIntervalSince1970: 0)) {
+  init (url: String, since: Date = Date(timeIntervalSince1970: 0)) {
     self.url = url
     self.since = since
   }
@@ -44,22 +54,23 @@ let invalidQueries: [MangerQuery] = [
 ]
 
 let sinceNowQueries: [MangerQuery] = [
-  Query(url: "http://feeds.wnyc.org/newyorkerradiohour", since: NSDate()),
-  Query(url: "http://feed.thisamericanlife.org/talpodcast", since: NSDate()),
-  Query(url: "http://feeds.serialpodcast.org/serialpodcast", since: NSDate())
+  Query(url: "http://feeds.wnyc.org/newyorkerradiohour", since: Date()),
+  Query(url: "http://feed.thisamericanlife.org/talpodcast", since: Date()),
+  Query(url: "http://feeds.serialpodcast.org/serialpodcast", since: Date())
 ]
 
 class MangerFailures: XCTestCase {
-  var session: NSURLSession!
-  var queue: dispatch_queue_t!
+  var session: URLSession!
+  var queue: DispatchQueue!
   var svc: MangerService!
   
   override func setUp() {
     super.setUp()
-    queue = dispatch_queue_create("com.michaelnisi.patron.json", DISPATCH_QUEUE_CONCURRENT)
+    queue = DispatchQueue.main
     session = freshSession()
-    let url = NSURL(string: "http://localhost:8385")!
-    svc = Manger(URL: url, queue: queue, session: session)
+    let url = URL(string: "http://localhost:8385")!
+    let client = Patron(URL: url, session: session, target: queue)
+    svc = Manger(client: client)
   }
   
   override func tearDown() {
@@ -68,8 +79,14 @@ class MangerFailures: XCTestCase {
     super.tearDown()
   }
   
-  func callbackWithExpression(exp: XCTestExpectation) -> (ErrorType?, Any?) -> Void {
-    func cb (error: ErrorType?, result: Any?)-> Void {
+  func testHost() {
+    XCTAssertEqual(svc.client.host, "localhost")
+  }
+  
+  func callbackWithExpression(
+    _ exp: XCTestExpectation)
+    -> (Error?, Any?) -> Void {
+    func cb (_ error: Error?, result: Any?)-> Void {
       let er = error as! NSError
       XCTAssertEqual(er.code, -1004)
       XCTAssertNil(result)
@@ -79,44 +96,48 @@ class MangerFailures: XCTestCase {
   }
   
   func testEntries() {
-    let exp = self.expectationWithDescription("entries")
+    let exp = self.expectation(description: "entries")
     let cb = callbackWithExpression(exp)
     try! svc.entries(queries, cb: cb)
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testFeeds() {
-    let exp = self.expectationWithDescription("feeds")
+    let exp = self.expectation(description: "feeds")
     let cb = callbackWithExpression(exp)
     try! svc.feeds(queries, cb: cb)
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testVersion() {
-    let exp = self.expectationWithDescription("version")
+    let exp = self.expectation(description: "version")
     let cb = callbackWithExpression(exp)
     try! svc.version(cb)
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
 }
 
 class MangerKitTests: XCTestCase {
-  var session: NSURLSession!
-  var queue: dispatch_queue_t!
+  var session: URLSession!
+  var queue: DispatchQueue!
   var svc: MangerService!
   
   override func setUp() {
     super.setUp()
-    queue = dispatch_queue_create("com.michaelnisi.patron.json", DISPATCH_QUEUE_CONCURRENT)
+    queue = DispatchQueue(
+      label: "com.michaelnisi.patron.json",
+      attributes: DispatchQueue.Attributes.concurrent
+    )
     session = freshSession()
-    let url = NSURL(string: "http://localhost:8384")!
-    svc = Manger(URL: url, queue: queue, session: session)
+    let url = URL(string: "http://localhost:8384")!
+    let client = Patron(URL: url, session: session, target: queue)
+    svc = Manger(client: client)
   }
   
   override func tearDown() {
@@ -126,60 +147,60 @@ class MangerKitTests: XCTestCase {
   func testJSTimeFromDate() {
     let f = JSTimeFromDate
     let found = [
-      f(NSDate(timeIntervalSince1970: 0)),
-      f(NSDate(timeIntervalSince1970: 1456042439.415))
+      f(Date(timeIntervalSince1970: 0)),
+      f(Date(timeIntervalSince1970: 1456042439.415))
     ]
     let wanted = [
       0.0,
       1456042439415.0
     ]
-    for (i, b) in wanted.enumerate() {
+    for (i, b) in wanted.enumerated() {
       let a = found[i]
       XCTAssertEqual(a, b)
     }
   }
   
   func testEntriesWithEmptyQueries() {
-    let exp = self.expectationWithDescription("entries")
+    let exp = self.expectation(description: "entries")
     let q = [MangerQuery]()
     do {
       try svc.entries(q) { _, _ in }
-    } catch MangerError.NoQueries {
+    } catch MangerError.noQueries {
       exp.fulfill()
     } catch {
       XCTFail("should throw expected error")
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testEntries() {
-    let exp = self.expectationWithDescription("entries")
+    let exp = self.expectation(description: "entries")
     try! svc.entries(queries) { error, entries in
       XCTAssertNil(error)
       XCTAssert(entries!.count > 0)
       exp.fulfill()
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testEntriesSinceNow() {
-    let exp = self.expectationWithDescription("entries")
+    let exp = self.expectation(description: "entries")
     try! svc.entries(sinceNowQueries) { error, entries in
       XCTAssertNil(error)
       XCTAssertEqual(entries!.count, 0)
       exp.fulfill()
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testEntriesCancel() {
-    let exp = self.expectationWithDescription("entries")
+    let exp = self.expectation(description: "entries")
     let op = try! svc.entries(queries) { error, entries in
       defer {
         exp.fulfill()
@@ -189,7 +210,7 @@ class MangerKitTests: XCTestCase {
       }
       do {
         throw error!
-      } catch MangerError.CancelledByUser {
+      } catch MangerError.cancelledByUser {
       } catch {
         XCTFail("should be expected error")
       }
@@ -197,39 +218,39 @@ class MangerKitTests: XCTestCase {
     delay() {
       op.cancel()
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testEntriesWithInvalidQueries() {
-    let exp = self.expectationWithDescription("entries")
+    let exp = self.expectation(description: "entries")
     do {
       try svc.entries(invalidQueries) { _, _ in }
-    } catch MangerError.InvalidQuery {
+    } catch MangerError.invalidQuery {
       exp.fulfill()
     } catch {
       XCTFail("should throw expected error")
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testFeeds() {
-    let exp = self.expectationWithDescription("feeds")
+    let exp = self.expectation(description: "feeds")
     try! svc.feeds(queries) { error, feeds in
       XCTAssertNil(error)
       XCTAssertEqual(feeds!.count, queries.count)
       exp.fulfill()
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testFeedsCancel() {
-    let exp = self.expectationWithDescription("feeds")
+    let exp = self.expectation(description: "feeds")
     let op = try! svc.feeds(queries) { error, feeds in
       defer {
         exp.fulfill()
@@ -239,7 +260,7 @@ class MangerKitTests: XCTestCase {
       }
       do {
         throw error!
-      } catch MangerError.CancelledByUser {
+      } catch MangerError.cancelledByUser {
       } catch {
         XCTFail("should be expected error")
       }
@@ -247,59 +268,59 @@ class MangerKitTests: XCTestCase {
     delay() {
       op.cancel()
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testFeedsWithEmptyQueries() {
-    let exp = self.expectationWithDescription("entries")
+    let exp = self.expectation(description: "entries")
     let queries = [MangerQuery]()
     do {
       try svc.feeds(queries) { _, _ in }
-    } catch MangerError.NoQueries {
+    } catch MangerError.noQueries {
       exp.fulfill()
     } catch {
       XCTFail("should throw expected error")
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testFeedsWithInvalidQueries() {
-    let exp = self.expectationWithDescription("entries")
+    let exp = self.expectation(description: "entries")
     do {
       try svc.feeds(invalidQueries) { _, _ in }
-    } catch MangerError.InvalidQuery {
+    } catch MangerError.invalidQuery {
       exp.fulfill()
     } catch {
       XCTFail("should throw expected error")
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testVersion() {
-    let exp = self.expectationWithDescription("version")
+    let exp = self.expectation(description: "version")
     try! svc.version() { error, version in
       XCTAssertNil(error)
-      XCTAssertEqual(version, "1.0.4")
+      XCTAssertEqual(version, "2.0.0")
       exp.fulfill()
     }
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testVersionCancel() {
     let svc = self.svc!
-    let exp = self.expectationWithDescription("version")
+    let exp = self.expectation(description: "version")
     let task = try! svc.version { error, version in
       do {
         throw error!
-      } catch MangerError.CancelledByUser {
+      } catch MangerError.cancelledByUser {
       } catch {
         XCTFail("should be expected error")
       }
@@ -307,20 +328,21 @@ class MangerKitTests: XCTestCase {
       exp.fulfill()
     }
     task.cancel()
-    self.waitForExpectationsWithTimeout(10) { er in
+    self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
   
   func testHTTPBodyFromPayload() {
-    let payload: Array<Dictionary<String, AnyObject>> = [
+    let payload: [[String : String]] = [
       ["url": "http://newyorker.com/feed/posts"],
       ["url": "http://newyorker.com/feed/posts", "since": "01 Sep 2015"]
     ]
     let body = HTTPBodyFromPayload(payload)
-    let json = try! NSJSONSerialization.JSONObjectWithData(body, options: .AllowFragments)
-    let found = json as! [NSDictionary]
-    let wanted = payload
-    XCTAssertEqual(found, wanted)
+    let json = try! JSONSerialization.jsonObject(with: body, options: [])
+    let found = json as! [[String : String]]
+    for (i, wanted) in payload.enumerated() {
+      XCTAssertEqual(found[i], wanted)
+    }
   }
 }
