@@ -187,6 +187,18 @@ class MangerKitTests: XCTestCase {
     }
   }
   
+  func testEntry() {
+    let exp = self.expectation(description: "entries")
+    try! svc.entries([queries.first!]) { error, entries in
+      XCTAssertNil(error)
+      XCTAssert(entries!.count > 0)
+      exp.fulfill()
+    }
+    self.waitForExpectations(timeout: 10) { er in
+      XCTAssertNil(er)
+    }
+  }
+  
   func testEntriesSinceNow() {
     let exp = self.expectation(description: "entries")
     try! svc.entries(sinceNowQueries) { error, entries in
@@ -231,6 +243,18 @@ class MangerKitTests: XCTestCase {
       exp.fulfill()
     } catch {
       XCTFail("should throw expected error")
+    }
+    self.waitForExpectations(timeout: 10) { er in
+      XCTAssertNil(er)
+    }
+  }
+  
+  func testFeed() {
+    let exp = self.expectation(description: "feeds")
+    try! svc.feeds([queries.first!]) { error, feeds in
+      XCTAssertNil(error)
+      XCTAssertEqual(feeds!.count, 1)
+      exp.fulfill()
     }
     self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
