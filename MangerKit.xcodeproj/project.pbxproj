@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4C930C991E181BAE00616FA5 /* Patron.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C930C981E181BAE00616FA5 /* Patron.framework */; };
 		4E3CFAC71B8EEDFA00BD62AC /* index.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E3CFAC61B8EEDFA00BD62AC /* index.swift */; };
-		4EA863A11D8822A5000C08B6 /* Patron.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EA863A01D8822A5000C08B6 /* Patron.framework */; };
 		4EFC37951B8EED4D00066026 /* MangerKit.h in Headers */ = {isa = PBXBuildFile; fileRef = 4EFC37941B8EED4D00066026 /* MangerKit.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		4EFC379C1B8EED4D00066026 /* MangerKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4EFC37911B8EED4D00066026 /* MangerKit.framework */; };
 		4EFC37A11B8EED4D00066026 /* MangerKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EFC37A01B8EED4D00066026 /* MangerKitTests.swift */; };
@@ -25,8 +25,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		4C930C981E181BAE00616FA5 /* Patron.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Patron.framework; path = "../patron/build/Debug-iphoneos/Patron.framework"; sourceTree = "<group>"; };
 		4E3CFAC61B8EEDFA00BD62AC /* index.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = index.swift; sourceTree = "<group>"; };
-		4EA863A01D8822A5000C08B6 /* Patron.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Patron.framework; path = "../../Library/Developer/Xcode/DerivedData/podest-cxrwkbilpoiklmejexzjehpjqzub/Build/Products/Debug-iphonesimulator/Patron.framework"; sourceTree = "<group>"; };
 		4EFC37911B8EED4D00066026 /* MangerKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MangerKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4EFC37941B8EED4D00066026 /* MangerKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MangerKit.h; sourceTree = "<group>"; };
 		4EFC37961B8EED4D00066026 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -40,7 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4EA863A11D8822A5000C08B6 /* Patron.framework in Frameworks */,
+				4C930C991E181BAE00616FA5 /* Patron.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -55,13 +55,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4C930C971E181BAE00616FA5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				4C930C981E181BAE00616FA5 /* Patron.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		4EFC37871B8EED4D00066026 = {
 			isa = PBXGroup;
 			children = (
-				4EA863A01D8822A5000C08B6 /* Patron.framework */,
 				4EFC37931B8EED4D00066026 /* MangerKit */,
 				4EFC379F1B8EED4D00066026 /* MangerKitTests */,
 				4EFC37921B8EED4D00066026 /* Products */,
+				4C930C971E181BAE00616FA5 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
