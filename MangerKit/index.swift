@@ -20,7 +20,7 @@ public enum MangerError: Error {
 }
 
 private func retypeError(_ error: Error?) -> Error? {
-  guard let er = error as? NSError else {
+  guard let er = error as NSError? else {
     return error
   }
   switch er.code {
