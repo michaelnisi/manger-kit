@@ -87,7 +87,7 @@ class MangerFailures: XCTestCase {
     _ exp: XCTestExpectation)
     -> (Error?, Any?) -> Void {
     func cb (_ error: Error?, result: Any?)-> Void {
-      let er = error as! NSError
+      let er = error! as NSError
       XCTAssertEqual(er.code, -1004)
       XCTAssertNil(result)
       exp.fulfill()
@@ -330,7 +330,7 @@ class MangerKitTests: XCTestCase {
     let exp = self.expectation(description: "version")
     try! svc.version() { error, version in
       XCTAssertNil(error)
-      XCTAssertEqual(version, "2.1.0")
+      XCTAssertEqual(version, "3.0.2")
       exp.fulfill()
     }
     self.waitForExpectations(timeout: 10) { er in
