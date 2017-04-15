@@ -10,7 +10,7 @@ import XCTest
 import Patron
 @testable import MangerKit
 
-/// Enqueue a block for execution after a specified delay in milliseconds or, 
+/// Enqueue a block for execution after a specified delay in milliseconds or,
 /// if `ms` isnt’t supplied, after a random delay between 0 and 10 milliseconds.
 ///
 /// - parameter queue: The queue on which to submit the block..
@@ -35,7 +35,7 @@ private func freshSession() -> URLSession {
 struct Query: MangerQuery {
   let url: String
   let since: Date
-  
+
   init (url: String, since: Date = Date(timeIntervalSince1970: 0)) {
     self.url = url
     self.since = since
@@ -63,7 +63,7 @@ class MangerFailures: XCTestCase {
   var session: URLSession!
   var queue: DispatchQueue!
   var svc: MangerService!
-  
+
   override func setUp() {
     super.setUp()
     queue = DispatchQueue.main
@@ -72,29 +72,29 @@ class MangerFailures: XCTestCase {
     let client = Patron(URL: url, session: session, target: queue)
     svc = Manger(client: client)
   }
-  
+
   override func tearDown() {
     session.invalidateAndCancel()
     svc = nil
     super.tearDown()
   }
-  
+
   func testHost() {
     XCTAssertEqual(svc.client.host, "localhost")
   }
-  
+
   func callbackWithExpression(
     _ exp: XCTestExpectation)
     -> (Error?, Any?) -> Void {
     func cb (_ error: Error?, result: Any?)-> Void {
-      let er = error as! NSError
+      let er = error! as NSError
       XCTAssertEqual(er.code, -1004)
       XCTAssertNil(result)
       exp.fulfill()
     }
     return cb
   }
-  
+
   func testEntries() {
     let exp = self.expectation(description: "entries")
     let cb = callbackWithExpression(exp)
@@ -103,7 +103,7 @@ class MangerFailures: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testFeeds() {
     let exp = self.expectation(description: "feeds")
     let cb = callbackWithExpression(exp)
@@ -112,7 +112,7 @@ class MangerFailures: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testVersion() {
     let exp = self.expectation(description: "version")
     let cb = callbackWithExpression(exp)
@@ -127,7 +127,7 @@ class MangerKitTests: XCTestCase {
   var session: URLSession!
   var queue: DispatchQueue!
   var svc: MangerService!
-  
+
   override func setUp() {
     super.setUp()
     queue = DispatchQueue(
@@ -139,11 +139,11 @@ class MangerKitTests: XCTestCase {
     let client = Patron(URL: url, session: session, target: queue)
     svc = Manger(client: client)
   }
-  
+
   override func tearDown() {
     super.tearDown()
   }
-  
+
   func testJSTimeFromDate() {
     let f = JSTimeFromDate
     let found = [
@@ -159,7 +159,7 @@ class MangerKitTests: XCTestCase {
       XCTAssertEqual(a, b)
     }
   }
-  
+
   func testEntriesWithEmptyQueries() {
     let exp = self.expectation(description: "entries")
     let q = [MangerQuery]()
@@ -174,7 +174,7 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testEntries() {
     let exp = self.expectation(description: "entries")
     try! svc.entries(queries) { error, entries in
@@ -186,7 +186,19 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
+  func testEntry() {
+    let exp = self.expectation(description: "entries")
+    try! svc.entries([queries.first!]) { error, entries in
+      XCTAssertNil(error)
+      XCTAssert(entries!.count > 0)
+      exp.fulfill()
+    }
+    self.waitForExpectations(timeout: 10) { er in
+      XCTAssertNil(er)
+    }
+  }
+
   func testEntriesSinceNow() {
     let exp = self.expectation(description: "entries")
     try! svc.entries(sinceNowQueries) { error, entries in
@@ -198,7 +210,7 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testEntriesCancel() {
     let exp = self.expectation(description: "entries")
     let op = try! svc.entries(queries) { error, entries in
@@ -222,7 +234,7 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testEntriesWithInvalidQueries() {
     let exp = self.expectation(description: "entries")
     do {
@@ -236,7 +248,19 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
+  func testFeed() {
+    let exp = self.expectation(description: "feeds")
+    try! svc.feeds([queries.first!]) { error, feeds in
+      XCTAssertNil(error)
+      XCTAssertEqual(feeds!.count, 1)
+      exp.fulfill()
+    }
+    self.waitForExpectations(timeout: 10) { er in
+      XCTAssertNil(er)
+    }
+  }
+
   func testFeeds() {
     let exp = self.expectation(description: "feeds")
     try! svc.feeds(queries) { error, feeds in
@@ -248,7 +272,7 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testFeedsCancel() {
     let exp = self.expectation(description: "feeds")
     let op = try! svc.feeds(queries) { error, feeds in
@@ -272,7 +296,7 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testFeedsWithEmptyQueries() {
     let exp = self.expectation(description: "entries")
     let queries = [MangerQuery]()
@@ -287,7 +311,7 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testFeedsWithInvalidQueries() {
     let exp = self.expectation(description: "entries")
     do {
@@ -301,19 +325,19 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testVersion() {
     let exp = self.expectation(description: "version")
     try! svc.version() { error, version in
       XCTAssertNil(error)
-      XCTAssertEqual(version, "2.1.0")
+      XCTAssertEqual(version, "3.0.2")
       exp.fulfill()
     }
     self.waitForExpectations(timeout: 10) { er in
       XCTAssertNil(er)
     }
   }
-  
+
   func testVersionCancel() {
     let svc = self.svc!
     let exp = self.expectation(description: "version")
@@ -332,7 +356,7 @@ class MangerKitTests: XCTestCase {
       XCTAssertNil(er)
     }
   }
-  
+
   func testHTTPBodyFromPayload() {
     let payload: [[String : String]] = [
       ["url": "http://newyorker.com/feed/posts"],

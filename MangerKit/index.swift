@@ -6,10 +6,10 @@
 //  Copyright © 2015 Michael Nisi. All rights reserved.
 //
 
-// TODO: Hit URL query path for single feeds without dates to improve caching
-
 import Foundation
 import Patron
+
+// MARK: API
 
 public enum MangerError: Error {
   case unexpectedResult(result: Any?)
@@ -18,6 +18,33 @@ public enum MangerError: Error {
   case invalidQuery
   case niy
 }
+
+public protocol MangerQuery {
+  var url: String { get }
+  var since: Date { get }
+}
+
+/// Define **manger** service, a client for **manger-http**, an HTTP JSON API
+/// for requesting feeds and entries within time intervals.
+public protocol MangerService {
+  var client: JSONService { get }
+  
+  @discardableResult func feeds(
+    _ queries: [MangerQuery],
+    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+    ) throws -> URLSessionTask
+  
+  @discardableResult func entries(
+    _ queries: [MangerQuery],
+    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+    ) throws -> URLSessionTask
+  
+  @discardableResult func version(
+    _ cb: @escaping (Error?, String?) -> Void
+    ) throws -> URLSessionTask
+}
+
+// MARK: -
 
 private func retypeError(_ error: Error?) -> Error? {
   guard let er = error as NSError? else {
@@ -34,12 +61,7 @@ func JSTimeFromDate(_ date: Date) -> Double {
   return round(ms)
 }
 
-public protocol MangerQuery {
-  var url: String { get }
-  var since: Date { get }
-}
-
-typealias Payload = [[String : Any]]
+private typealias Payload = [[String : Any]]
 
 private func payloadWithQueries(_ queries: [MangerQuery]) -> Payload {
   return queries.map { query in
@@ -51,28 +73,9 @@ private func payloadWithQueries(_ queries: [MangerQuery]) -> Payload {
   }
 }
 
-/// Define **manger** service, a client for **manger-http**, an HTTP JSON API
-/// for requesting feeds and entries within time intervals.
-public protocol MangerService {
-  var client: JSONService { get }
-  
-  @discardableResult func feeds(
-    _ queries: [MangerQuery],
-    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
-  ) throws -> URLSessionTask
-  
-  @discardableResult func entries(
-    _ queries: [MangerQuery],
-    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
-  ) throws -> URLSessionTask
-  
-  @discardableResult func version(
-    _ cb: @escaping (Error?, String?) -> Void
-  ) throws -> URLSessionTask
-}
-
-func HTTPBodyFromPayload(_ payload: [[String : Any]]) -> Data {
-  return try! JSONSerialization.data(withJSONObject: payload, options: .prettyPrinted)
+private func urlEncode(_ path: String, for url: String) -> String {
+  let url = url.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed)!
+  return "\(path)/\(url)"
 }
 
 private func checkQueries(_ queries: [MangerQuery]) throws {
@@ -83,6 +86,10 @@ private func checkQueries(_ queries: [MangerQuery]) throws {
   if invalids.count != 0 {
     throw MangerError.invalidQuery
   }
+}
+
+func HTTPBodyFromPayload(_ payload: [[String : Any]]) -> Data {
+  return try! JSONSerialization.data(withJSONObject: payload, options: .prettyPrinted)
 }
 
 /// The production implementation of `MangerService`. Note that this object 
@@ -99,9 +106,9 @@ public final class Manger: MangerService {
     self.client = client
   }
 
-  private func queryTaskWithPayload(
+  private func post(
     _ payload: Payload,
-    forPath path: String,
+    to path: String,
     cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask {
     let json = payload as AnyObject
@@ -115,38 +122,78 @@ public final class Manger: MangerService {
       }
     }
   }
+  
+  private func get(
+    _ path: String,
+    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+  ) throws -> URLSessionTask {
+    return client.get(path: path) { json, response, error in
+      if let er = retypeError(error) {
+        cb(er, nil)
+      } else if let result = json as? [[String : AnyObject]] {
+        cb(nil, result)
+      } else {
+        cb(MangerError.unexpectedResult(result: json), nil)
+      }
+    }
+  }
 
   /// Requests feeds for specified queries.
   ///
+  /// - parameter queries: An array of `MangerQuery` objects.
+  /// - parameter cb: The callback to apply when the request is complete.
+  /// - parameter error: An eventual error.
+  /// - parameter payload: The payload is an array of feed dictionaries.
+  ///
   /// - returns: The URL session task.
-  /// - throws: Invalid URLs or failed payload serialization can obstruct
+  ///
+  /// - throws: Invalid URLs or failed payload serialization might obstruct
   /// successful task creation.
   public func feeds(
     _ queries: [MangerQuery],
-    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws ->  URLSessionTask {
     try checkQueries(queries)
+    
+    if queries.count == 1 {
+      let query = queries.first!
+      return try get(urlEncode("/feed", for: query.url), cb: cb)
+    }
+    
     let payload = payloadWithQueries(queries)
-    return try queryTaskWithPayload(payload, forPath: "/feeds", cb: cb)
+    return try post(payload, to: "/feeds", cb: cb)
   }
   
   /// Requests entries for specified queries.
   ///
+  /// - parameter queries: An array of `MangerQuery` objects.
+  /// - parameter cb: The callback to apply when the request is complete.
+  /// - parameter error: An eventual error.
+  /// - parameter payload: The payload is an array of entry dictionaries.
+  ///
   /// - returns: The URL session task.
+  ///
   /// - throws: Invalid URLs or failed payload serialization can obstruct
   /// successful task creation.
   public func entries(
     _ queries: [MangerQuery],
-    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask {
     try checkQueries(queries)
+    
+    if queries.count == 1, queries.first?.since.timeIntervalSince1970 == 0 {
+      let query = queries.first!
+      return try get(urlEncode("/entries", for: query.url), cb: cb)
+    }
+    
     let payload = payloadWithQueries(queries)
-    return try queryTaskWithPayload(payload, forPath: "/entries", cb: cb)
+    return try post(payload, to: "/entries", cb: cb)
   }
 
   /// Requests the version of the remote API.
   ///
   /// - returns: The URL session task.
+  ///
   /// - throws: Invalid URLs or failed payload serialization can obstruct
   /// successful task creation.
   public func version(_ cb: @escaping (Error?, String?) -> Void) throws -> URLSessionTask {
@@ -161,4 +208,3 @@ public final class Manger: MangerService {
     }
   }
 }
-

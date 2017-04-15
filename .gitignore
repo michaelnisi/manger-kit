@@ -12,7 +12,7 @@
 *.playground
 *.xccheckout
 *.xcuserstate
+.DS_Store
 DerivedData
 build/
-module/module.modulemap
 xcuserdata
