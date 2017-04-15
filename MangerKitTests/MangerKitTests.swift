@@ -330,7 +330,7 @@ class MangerKitTests: XCTestCase {
     let exp = self.expectation(description: "version")
     try! svc.version() { error, version in
       XCTAssertNil(error)
-      XCTAssertEqual(version, "2.0.0")
+      XCTAssertEqual(version, "2.1.0")
       exp.fulfill()
     }
     self.waitForExpectations(timeout: 10) { er in
