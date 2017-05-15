@@ -36,8 +36,14 @@ public protocol MangerService {
   
   @discardableResult func entries(
     _ queries: [MangerQuery],
+    reload: Bool,
     cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
-    ) throws -> URLSessionTask
+  ) throws -> URLSessionTask
+  
+  @discardableResult func entries(
+    _ queries: [MangerQuery],
+    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+  ) throws -> URLSessionTask
   
   @discardableResult func version(
     _ cb: @escaping (Error?, String?) -> Void
@@ -125,9 +131,17 @@ public final class Manger: MangerService {
   
   private func get(
     _ path: String,
+    reload: Bool,
     cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask {
-    return client.get(path: path) { json, response, error in
+    
+    let cachePolicy: NSURLRequest.CachePolicy =
+      reload ? .reloadIgnoringLocalCacheData : .useProtocolCachePolicy
+    
+    return client.get(path: path,
+                      allowsCellularAccess: true,
+                      cachePolicy: cachePolicy) { json, response, error in
+                        
       if let er = retypeError(error) {
         cb(er, nil)
       } else if let result = json as? [[String : AnyObject]] {
@@ -157,11 +171,39 @@ public final class Manger: MangerService {
     
     if queries.count == 1 {
       let query = queries.first!
-      return try get(urlEncode("/feed", for: query.url), cb: cb)
+      return try get(urlEncode("/feed", for: query.url), reload: false, cb: cb)
     }
     
     let payload = payloadWithQueries(queries)
     return try post(payload, to: "/feeds", cb: cb)
+  }
+  
+  /// Requests entries for specified queries.
+  ///
+  /// - parameter queries: An array of `MangerQuery` objects.
+  /// - parameter reload: Reload data ignoring cache.
+  /// - parameter cb: The callback to apply when the request is complete.
+  /// - parameter error: An eventual error.
+  /// - parameter payload: The payload is an array of entry dictionaries.
+  ///
+  /// - returns: The URL session task.
+  ///
+  /// - throws: Invalid URLs or failed payload serialization can obstruct
+  /// successful task creation.
+  public func entries(
+    _ queries: [MangerQuery],
+    reload: Bool,
+    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
+  ) throws -> URLSessionTask {
+    try checkQueries(queries)
+    
+    if queries.count == 1, queries.first?.since.timeIntervalSince1970 == 0 {
+      let query = queries.first!
+      return try get(urlEncode("/entries", for: query.url), reload: reload, cb: cb)
+    }
+    
+    let payload = payloadWithQueries(queries)
+    return try post(payload, to: "/entries", cb: cb)
   }
   
   /// Requests entries for specified queries.
@@ -179,15 +221,7 @@ public final class Manger: MangerService {
     _ queries: [MangerQuery],
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask {
-    try checkQueries(queries)
-    
-    if queries.count == 1, queries.first?.since.timeIntervalSince1970 == 0 {
-      let query = queries.first!
-      return try get(urlEncode("/entries", for: query.url), cb: cb)
-    }
-    
-    let payload = payloadWithQueries(queries)
-    return try post(payload, to: "/entries", cb: cb)
+    return try entries(queries, reload: false, cb: cb)
   }
 
   /// Requests the version of the remote API.
