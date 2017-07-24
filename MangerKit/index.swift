@@ -72,7 +72,7 @@ private typealias Payload = [[String : Any]]
 private func payloadWithQueries(_ queries: [MangerQuery]) -> Payload {
   return queries.map { query in
     let since = JSTimeFromDate(query.since)
-    guard since != 0 else {
+    guard since > 0 else {
       return ["url": query.url as AnyObject]
     }
     return ["url": query.url as AnyObject, "since": since as AnyObject]
