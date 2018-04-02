@@ -61,15 +61,13 @@ let sinceNowQueries: [MangerQuery] = [
 
 class MangerFailures: XCTestCase {
   var session: URLSession!
-  var queue: DispatchQueue!
   var svc: MangerService!
 
   override func setUp() {
     super.setUp()
-    queue = DispatchQueue.main
     session = freshSession()
     let url = URL(string: "http://localhost:8385")!
-    let client = Patron(URL: url, session: session, target: queue)
+    let client = Patron(URL: url, session: session)
     svc = Manger(client: client)
   }
 
@@ -136,7 +134,7 @@ class MangerKitTests: XCTestCase {
     )
     session = freshSession()
     let url = URL(string: "http://localhost:8384")!
-    let client = Patron(URL: url, session: session, target: queue)
+    let client = Patron(URL: url, session: session)
     svc = Manger(client: client)
   }
 
@@ -330,7 +328,7 @@ class MangerKitTests: XCTestCase {
     let exp = self.expectation(description: "version")
     try! svc.version() { error, version in
       XCTAssertNil(error)
-      XCTAssertEqual(version, "3.0.2")
+      XCTAssertEqual(version, "3.0.4")
       exp.fulfill()
     }
     self.waitForExpectations(timeout: 10) { er in
