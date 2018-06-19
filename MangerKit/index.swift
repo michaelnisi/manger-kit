@@ -29,25 +29,73 @@ public protocol MangerQuery {
 public protocol MangerService {
   var client: JSONService { get }
   
+  /// Requests feeds for specified queries.
+  ///
+  /// - Parameters:
+  ///   - queries: An array of `MangerQuery` objects.
+  ///   - cb: The callback to apply when the request is complete.
+  ///   - error: An eventual error.
+  ///   - payload: The payload is an array of feed dictionaries.
+  ///
+  /// - Returns: The URL session task.
+  ///
+  /// - Throws: Invalid URLs or failed payload serialization might obstruct
+  /// successful task creation.
   @discardableResult func feeds(
     _ queries: [MangerQuery],
-    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
-    ) throws -> URLSessionTask
+    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
+  ) throws -> URLSessionTask
   
+  /// Requests entries for specified queries.
+  ///
+  /// - Parameters:
+  ///   - queries: An array of `MangerQuery` objects.
+  ///   - reload: Reload data ignoring cache.
+  ///   - cb: The callback to apply when the request is complete.
+  ///   - error: An eventual error.
+  ///   - payload: The payload is an array of entry dictionaries.
+  ///
+  /// - Returns: The URL session task.
+  ///
+  /// - Throws: Invalid URLs or failed payload serialization can obstruct
+  /// successful task creation.
   @discardableResult func entries(
     _ queries: [MangerQuery],
     reload: Bool,
-    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask
   
+  /// Requests entries for specified queries.
+  ///
+  /// - Parameters:
+  ///   - queries: An array of `MangerQuery` objects.
+  ///   - cb: The callback to apply when the request is complete.
+  ///   - error: An eventual error.
+  ///   - payload: The payload is an array of entry dictionaries.
+  ///
+  /// - Returns: The URL session task.
+  ///
+  /// - Throws: Invalid URLs or failed payload serialization can obstruct
+  /// successful task creation.
   @discardableResult func entries(
     _ queries: [MangerQuery],
-    cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
+    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask
   
+  /// Requests the version of the remote API.
+  ///
+  /// - Parameters:
+  ///   - cb: The block to execute with the result.
+  ///   - error: An optional error if something went wrong.
+  ///   - service: The version string of the service.
+  ///
+  /// - Returns: The URL session task.
+  ///
+  /// - Throws: Invalid URLs or failed payload serialization can obstruct
+  /// successful task creation.
   @discardableResult func version(
-    _ cb: @escaping (Error?, String?) -> Void
-    ) throws -> URLSessionTask
+    _ cb: @escaping (_ error: Error?, _ service: String?) -> Void
+  ) throws -> URLSessionTask
 }
 
 // MARK: -
@@ -152,17 +200,6 @@ public final class Manger: MangerService {
     }
   }
 
-  /// Requests feeds for specified queries.
-  ///
-  /// - parameter queries: An array of `MangerQuery` objects.
-  /// - parameter cb: The callback to apply when the request is complete.
-  /// - parameter error: An eventual error.
-  /// - parameter payload: The payload is an array of feed dictionaries.
-  ///
-  /// - returns: The URL session task.
-  ///
-  /// - throws: Invalid URLs or failed payload serialization might obstruct
-  /// successful task creation.
   public func feeds(
     _ queries: [MangerQuery],
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
@@ -178,18 +215,6 @@ public final class Manger: MangerService {
     return try post(payload, to: "/feeds", cb: cb)
   }
   
-  /// Requests entries for specified queries.
-  ///
-  /// - parameter queries: An array of `MangerQuery` objects.
-  /// - parameter reload: Reload data ignoring cache.
-  /// - parameter cb: The callback to apply when the request is complete.
-  /// - parameter error: An eventual error.
-  /// - parameter payload: The payload is an array of entry dictionaries.
-  ///
-  /// - returns: The URL session task.
-  ///
-  /// - throws: Invalid URLs or failed payload serialization can obstruct
-  /// successful task creation.
   public func entries(
     _ queries: [MangerQuery],
     reload: Bool,
@@ -206,17 +231,6 @@ public final class Manger: MangerService {
     return try post(payload, to: "/entries", cb: cb)
   }
   
-  /// Requests entries for specified queries.
-  ///
-  /// - parameter queries: An array of `MangerQuery` objects.
-  /// - parameter cb: The callback to apply when the request is complete.
-  /// - parameter error: An eventual error.
-  /// - parameter payload: The payload is an array of entry dictionaries.
-  ///
-  /// - returns: The URL session task.
-  ///
-  /// - throws: Invalid URLs or failed payload serialization can obstruct
-  /// successful task creation.
   public func entries(
     _ queries: [MangerQuery],
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
@@ -224,13 +238,9 @@ public final class Manger: MangerService {
     return try entries(queries, reload: false, cb: cb)
   }
 
-  /// Requests the version of the remote API.
-  ///
-  /// - returns: The URL session task.
-  ///
-  /// - throws: Invalid URLs or failed payload serialization can obstruct
-  /// successful task creation.
-  public func version(_ cb: @escaping (Error?, String?) -> Void) throws -> URLSessionTask {
+  public func version(
+    _ cb: @escaping (Error?, String?) -> Void
+  ) throws -> URLSessionTask {
     return client.get(path: "/") { json, response, error in
       if let er = retypeError(error) {
         cb(er, nil)
