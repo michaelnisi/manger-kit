@@ -46,11 +46,30 @@ public protocol MangerService {
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask
   
+  /// Requests feeds for specified queries.
+  ///
+  /// - Parameters:
+  ///   - queries: An array of `MangerQuery` objects.
+  ///   - cachePolicy: The HTTP request policy defaulting to protocol.
+  ///   - cb: The callback to apply when the request is complete.
+  ///   - error: An eventual error.
+  ///   - payload: The payload is an array of feed dictionaries.
+  ///
+  /// - Returns: The URL session task.
+  ///
+  /// - Throws: Invalid URLs or failed payload serialization might obstruct
+  /// successful task creation.
+  @discardableResult func feeds(
+    _ queries: [MangerQuery],
+    cachePolicy: NSURLRequest.CachePolicy,
+    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
+    ) throws -> URLSessionTask
+  
   /// Requests entries for specified queries.
   ///
   /// - Parameters:
   ///   - queries: An array of `MangerQuery` objects.
-  ///   - reload: Reload data ignoring cache.
+  ///   - cachePolicy: The HTTP request policy defaulting to protocol.
   ///   - cb: The callback to apply when the request is complete.
   ///   - error: An eventual error.
   ///   - payload: The payload is an array of entry dictionaries.
@@ -61,7 +80,7 @@ public protocol MangerService {
   /// successful task creation.
   @discardableResult func entries(
     _ queries: [MangerQuery],
-    reload: Bool,
+    cachePolicy: NSURLRequest.CachePolicy,
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask
   
@@ -179,13 +198,9 @@ public final class Manger: MangerService {
   
   private func get(
     _ path: String,
-    reload: Bool,
+    cachePolicy: NSURLRequest.CachePolicy = .useProtocolCachePolicy,
     cb: @escaping (Error?, [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask {
-    
-    let cachePolicy: NSURLRequest.CachePolicy =
-      reload ? .reloadIgnoringLocalCacheData : .useProtocolCachePolicy
-    
     return client.get(path: path,
                       allowsCellularAccess: true,
                       cachePolicy: cachePolicy) { json, response, error in
@@ -202,29 +217,36 @@ public final class Manger: MangerService {
 
   public func feeds(
     _ queries: [MangerQuery],
+    cachePolicy: NSURLRequest.CachePolicy = .reloadIgnoringLocalCacheData,
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws ->  URLSessionTask {
     try checkQueries(queries)
     
     if queries.count == 1 {
       let query = queries.first!
-      return try get(urlEncode("/feed", for: query.url), reload: false, cb: cb)
+      return try get(urlEncode("/feed", for: query.url), cb: cb)
     }
     
     let payload = payloadWithQueries(queries)
     return try post(payload, to: "/feeds", cb: cb)
   }
   
+  public func feeds(
+    _ queries: [MangerQuery],
+    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
+    ) throws ->  URLSessionTask {
+    return try feeds(queries, cb: cb)
+  }
+  
   public func entries(
     _ queries: [MangerQuery],
-    reload: Bool,
+    cachePolicy: NSURLRequest.CachePolicy = .reloadIgnoringLocalCacheData,
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask {
     try checkQueries(queries)
-    
     if queries.count == 1, queries.first?.since.timeIntervalSince1970 == 0 {
       let query = queries.first!
-      return try get(urlEncode("/entries", for: query.url), reload: reload, cb: cb)
+      return try get(urlEncode("/entries", for: query.url), cachePolicy: cachePolicy, cb: cb)
     }
     
     let payload = payloadWithQueries(queries)
@@ -235,7 +257,7 @@ public final class Manger: MangerService {
     _ queries: [MangerQuery],
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask {
-    return try entries(queries, reload: false, cb: cb)
+    return try entries(queries, cb: cb)
   }
 
   public func version(
