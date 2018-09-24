@@ -28,24 +28,7 @@ public protocol MangerQuery {
 /// for requesting feeds and entries within time intervals.
 public protocol MangerService {
   var client: JSONService { get }
-  
-  /// Requests feeds for specified queries.
-  ///
-  /// - Parameters:
-  ///   - queries: An array of `MangerQuery` objects.
-  ///   - cb: The callback to apply when the request is complete.
-  ///   - error: An eventual error.
-  ///   - payload: The payload is an array of feed dictionaries.
-  ///
-  /// - Returns: The URL session task.
-  ///
-  /// - Throws: Invalid URLs or failed payload serialization might obstruct
-  /// successful task creation.
-  @discardableResult func feeds(
-    _ queries: [MangerQuery],
-    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
-  ) throws -> URLSessionTask
-  
+
   /// Requests feeds for specified queries.
   ///
   /// - Parameters:
@@ -63,8 +46,25 @@ public protocol MangerService {
     _ queries: [MangerQuery],
     cachePolicy: NSURLRequest.CachePolicy,
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
-    ) throws -> URLSessionTask
-  
+  ) throws -> URLSessionTask
+
+  /// Requests feeds for specified queries.
+  ///
+  /// - Parameters:
+  ///   - queries: An array of `MangerQuery` objects.
+  ///   - cb: The callback to apply when the request is complete.
+  ///   - error: An eventual error.
+  ///   - payload: The payload is an array of feed dictionaries.
+  ///
+  /// - Returns: The URL session task.
+  ///
+  /// - Throws: Invalid URLs or failed payload serialization might obstruct
+  /// successful task creation.
+  @discardableResult func feeds(
+    _ queries: [MangerQuery],
+    cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
+  ) throws -> URLSessionTask
+
   /// Requests entries for specified queries.
   ///
   /// - Parameters:
@@ -217,7 +217,7 @@ public final class Manger: MangerService {
 
   public func feeds(
     _ queries: [MangerQuery],
-    cachePolicy: NSURLRequest.CachePolicy = .reloadIgnoringLocalCacheData,
+    cachePolicy: NSURLRequest.CachePolicy,
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws ->  URLSessionTask {
     try checkQueries(queries)
@@ -235,12 +235,12 @@ public final class Manger: MangerService {
     _ queries: [MangerQuery],
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
     ) throws ->  URLSessionTask {
-    return try feeds(queries, cb: cb)
+    return try feeds(queries, cachePolicy: .reloadIgnoringLocalCacheData, cb: cb)
   }
   
   public func entries(
     _ queries: [MangerQuery],
-    cachePolicy: NSURLRequest.CachePolicy = .reloadIgnoringLocalCacheData,
+    cachePolicy: NSURLRequest.CachePolicy,
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask {
     try checkQueries(queries)
@@ -257,7 +257,7 @@ public final class Manger: MangerService {
     _ queries: [MangerQuery],
     cb: @escaping (_ error: Error?, _ payload: [[String : AnyObject]]?) -> Void
   ) throws -> URLSessionTask {
-    return try entries(queries, cb: cb)
+    return try entries(queries, cachePolicy: .reloadIgnoringLocalCacheData, cb: cb)
   }
 
   public func version(
