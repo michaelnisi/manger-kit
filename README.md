@@ -120,4 +120,4 @@ Integrate the MangerKit framework into your Xcode workspace.
 
 ## License
 
-[MIT License](https://github.com/michaelnisi/fanboy-kit/blob/master/LICENSE)
+[MIT License](https://github.com/michaelnisi/manger-kit/blob/master/LICENSE)
