@@ -27,7 +27,7 @@ func delay(
 
 private func freshSession() -> URLSession {
   let conf = URLSessionConfiguration.default
-  conf.httpShouldUsePipelining = true
+  conf.httpShouldUsePipelining = false
   conf.requestCachePolicy = .reloadIgnoringLocalCacheData
   return URLSession(configuration: conf)
 }
