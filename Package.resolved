@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "Patron",
+        "repositoryURL": "/Users/michael/swift/patron",
+        "state": {
+          "branch": "pkg",
+          "revision": "56f5e3215b43a0bcc4ac4b15caafde467f86b610",
+          "version": null
+        }
+      }
+    ]
+  },
+  "version": 1
+}

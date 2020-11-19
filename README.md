@@ -114,9 +114,17 @@ var client: JSONService { get }
 
 The client property gives access to the underlying [Patron](https://github.com/michaelnisi/patron) client, providing hostname and status of the remote service.
 
-## Installation
+## Test
 
-Integrate the MangerKit framework into your Xcode workspace.
+With **manger-http** running, do:
+
+```
+$ swift test
+```
+
+## Install
+
+Add `https://github.com/michaelnisi/manger-kit`  to your package manifest.
 
 ## License
 

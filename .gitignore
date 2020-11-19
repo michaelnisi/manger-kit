@@ -13,6 +13,8 @@
 *.xccheckout
 *.xcuserstate
 .DS_Store
+.build
+.swiftpm
 DerivedData
 build/
 xcuserdata
