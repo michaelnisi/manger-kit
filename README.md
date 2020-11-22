@@ -1,6 +1,6 @@
 # MangerKit
 
-Browse podcasts with MangerKit. The MangerKit framework provides a JSON HTTP client that lets you request combined ranges of podcast feeds from the [manger-http](https://github.com/michaelnisi/manger-http) service, a caching RSS feed proxy.
+Browse podcasts with MangerKit. The MangerKit Swift package provides a JSON HTTP client that lets you request combined ranges of podcast feeds from the [manger-http](https://github.com/michaelnisi/manger-http) service, a caching RSS feed proxy.
 
 MangerKit is used in the [Podest](https://github.com/michaelnisi/podest) podcast app.
 
@@ -124,7 +124,7 @@ $ swift test
 
 ## Install
 
-Add `https://github.com/michaelnisi/manger-kit`  to your package manifest.
+📦 Add `https://github.com/michaelnisi/manger-kit`  to your package manifest.
 
 ## License
 

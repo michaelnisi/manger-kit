@@ -13,7 +13,7 @@ let package = Package(
       targets: ["MangerKit"]),
   ],
   dependencies: [
-    .package(name: "Patron", url: "/Users/michael/swift/patron", .branch("pkg"))
+    .package(name: "Patron", url: "https://github.com/michaelnisi/patron", from: "11.0.0")
   ],
   targets: [
     .target(
